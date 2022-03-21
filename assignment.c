@@ -21,6 +21,7 @@ int processFinishTime[MAX_PROCESS_COUNT];           // Store information on proc
 int processResponseTime[MAX_PROCESS_COUNT];         // Store information on process response time.
 int processTurnaroundTime[MAX_PROCESS_COUNT];       // Store information on process turnaround time.
 int processWaitingTime[MAX_PROCESS_COUNT];          // Store information on process waiting time.
+bool processAdded[MAX_PROCESS_COUNT];               // Store information on whether process has been added to queue.
 
 int timeQuantum = 1;                                // Time Quantum before context switching.
 
@@ -30,29 +31,47 @@ float maxTurnaroundTime = 0;
 float averageWaitingTime = 0;
 float maxWaitingTime = 0;
 
+// Process Data Structure
+typedef struct {
+    int processNumber;
+    int remainingTime;
+
+    int arrivalTime;
+    int burstTime;
+    int finishTime;
+} Process;
+
+void printProcess(Process* p);
+
+void printProcess(Process* p) {
+    printf("(P%d, %d)\n", p->processNumber, p->remainingTime);
+}
+
 // Queue Data Structure
 typedef struct {
-    int inp_arr[MAX_PROCESS_COUNT];
+    Process* inp_arr[MAX_PROCESS_COUNT];
     int Rear; 
     int Front;
+    int size;
 } Queue;
 
-
-void enqueue();
-void dequeue();
+Queue* createQueue();
+void enqueue(Queue* q, Process* p);
+Process* peek(Queue* q);
+Process* dequeue(Queue* q);
 void show();
 
 Queue* createQueue() {
     Queue* q = malloc(sizeof(Queue));
     q->Front = -1;
     q->Rear = -1;
-
+    q->size = 0;
     return q;
 }
 
-void enqueue(Queue* q, int n)
+void enqueue(Queue* q, Process* p)
 {
-    int insert_item = n;
+    Process* insert_item = p;
     if (q->Rear == MAX_PROCESS_COUNT - 1)
        printf("Overflow \n");
     else
@@ -62,36 +81,53 @@ void enqueue(Queue* q, int n)
         q->Front = 0;
         q->Rear = q->Rear + 1;
         q->inp_arr[q->Rear] = insert_item;
+        q->size = q->size + 1;
     }
 } 
   
-void dequeue(Queue* q)
+Process* dequeue(Queue* q)
 {
     if (q->Front == - 1 || q->Front > q->Rear)
     {
         printf("Underflow \n");
-        return ;
+        return NULL;
     }
     else
-    {
+    {   
+        Process* tmp = q->inp_arr[q->Front];
         q->Front = q->Front + 1;
+        q->size = q->size - 1;
+        return tmp;
     }
 } 
-  
+
 void show(Queue* q)
 {
     if (q->Front == - 1)
         printf("Empty Queue \n");
     else
     {   
-        printf("Queue: \n");
+        printf("Queue: ");
         printf("[");
         for (int i = q->Front; i <= q->Rear; i++)
-            printf("%d, ", q->inp_arr[i]);
+            printf("(P%d, %d), ", q->inp_arr[i]->processNumber, q->inp_arr[i]->remainingTime);
         printf("]");
         printf("\n");
     }
 } 
+
+int isEmpty(Queue* q) {
+    return q->size == 0;
+}
+
+Process* peek(Queue* q){
+    if (isEmpty(q)) {
+        return NULL;
+    }
+
+    Process* tmp = q->inp_arr[q->Front];
+    return tmp;
+}
 
 /**
   * Get index of first occurence of char c in string. 
@@ -199,7 +235,12 @@ void defaultRoundRobin() {
     /*
         PERFORM ALGORITHM.
     */
-    
+    // Set all processAdded elements to false
+    for (int i = 0; i < processCount; i++) {
+        processAdded[i] = false;
+    }
+
+
     // Get maximum process burst time.
     int maxBurstTime = processBurstTime[0];         
     int i;
@@ -211,16 +252,87 @@ void defaultRoundRobin() {
     }
 
     // simulation of round robin process
-    Queue* queue = createQueue();                   // Create Queue data structure
+    Queue* queue = createQueue();                   // Create Queue
+    Process* cpu = NULL;                            // READY process to be executed
 
-    int currTime = 0; int currProcess = -1;
+    int count = 0;                                  // TMP variable to stop loop...
+    int currTime = 0;                               // Keep track of current time.
+    int tmpQuantum = 1;                             // Keeping track when to switch.
+
+    printf("ALGORITHM\n---\n");
     while (true) {
-        
-        // If process arrives, add to queue
-        if (processArrivalTime[i] >= currTime) {
-
+        if (cpu) {
+            printf("CPU "); printProcess(cpu);
+        } else {
+            printf("CPU: NULL\n");
         }
-        break;
+        
+        // Add processes to Queue
+        for (int i = 0; i < processCount; i++) {
+            // If process arrives, add to queue. If already added, do not add again...
+            if (currTime >= processArrivalTime[i] && !processAdded[i]) {
+                Process* p = malloc(sizeof(Process));
+
+                // Add process parameters
+                p->processNumber = i;
+                p->arrivalTime = processArrivalTime[i];
+                p->burstTime = processBurstTime[i];        
+                p->remainingTime = processBurstTime[i];
+                enqueue(queue, p);
+
+                processAdded[i] = true;
+
+                printf("Added process %d to Queue!\n", p->processNumber);
+            }
+        }
+
+        printf("Queue BEFORE EXECUTING "); show(queue);
+
+        // If cpu has a process, execute
+        if (cpu) {
+            cpu->remainingTime = cpu->remainingTime - 1;                    // Execute process
+            printf("Executing process %d now\n", cpu->processNumber);
+            printf("Current Status: "); printProcess(cpu);
+
+            // Process has finished executing
+            if (cpu->remainingTime <= 0) {
+                cpu->finishTime = currTime;
+                printf("P%d has finished executing at time %d!!!!\n", cpu->processNumber, cpu->finishTime);
+                free(cpu);
+                cpu = NULL;
+            }
+
+            // Time quantum exceeded, add back to queue. 
+            else if (tmpQuantum > timeQuantum) {
+                enqueue(queue, cpu);
+                printf("Switch Process %d out.\n", cpu->processNumber);
+                tmpQuantum = 1;                                             // RESET time quantum.
+            }
+        }
+
+        printf("Queue AFTER EXECUTING "); show(queue);
+
+
+        // If queue is not empty, dequeue and put into CPU
+        if (!isEmpty(queue)) {
+            Process* tmp = dequeue(queue);
+            printf("Next Process: "); printProcess(tmp); 
+
+            // Add to Queue
+            cpu = tmp; printf("Process %d added to CPU\n", cpu->processNumber);   
+        }
+
+        printf("count = %d, currTime = %d, timeElapsed = %d\n---\n", count, currTime, currTime+1);
+        
+        
+        count++;
+        currTime++;
+        tmpQuantum++;                               // Keep track of when to switch processes.
+        
+
+        if (count > 16) {
+            break;
+        }
     }
 
 
