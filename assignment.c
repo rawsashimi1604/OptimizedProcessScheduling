@@ -23,7 +23,7 @@ int processTurnaroundTime[MAX_PROCESS_COUNT];       // Store information on proc
 int processWaitingTime[MAX_PROCESS_COUNT];          // Store information on process waiting time.
 bool processAdded[MAX_PROCESS_COUNT];               // Store information on whether process has been added to queue.
 
-int timeQuantum = 1;                                // Time Quantum before context switching.
+int timeQuantum = 2;                                // Time Quantum before context switching.
 
 // Parameters to be optimized.
 float averageTurnaroundTime = 0;      
@@ -35,8 +35,10 @@ float maxWaitingTime = 0;
 typedef struct {
     int processNumber;
     int remainingTime;
+    bool started;
 
     int arrivalTime;
+    int startTime;
     int burstTime;
     int finishTime;
 } Process;
@@ -294,10 +296,22 @@ void defaultRoundRobin() {
             printf("Executing process %d now\n", cpu->processNumber);
             printf("Current Status: "); printProcess(cpu);
 
+            if (!cpu->started) {
+                cpu->startTime = currTime-1;
+                cpu->started = true;
+            }
+
             // Process has finished executing
             if (cpu->remainingTime <= 0) {
                 cpu->finishTime = currTime;
                 printf("P%d has finished executing at time %d!!!!\n", cpu->processNumber, cpu->finishTime);
+
+                // Update information arrays...
+                processFinishTime[cpu->processNumber] = cpu->finishTime;
+                processTurnaroundTime[cpu->processNumber] = cpu->finishTime - cpu->arrivalTime;
+                processWaitingTime[cpu->processNumber] = processTurnaroundTime[cpu->processNumber] - cpu->burstTime;
+                processResponseTime[cpu->processNumber] = cpu->startTime - cpu->arrivalTime;
+
                 free(cpu);
                 cpu = NULL;
             }
@@ -335,17 +349,33 @@ void defaultRoundRobin() {
         }
     }
 
-
-    // Get finish time
-    for (i = 0; i < processCount; i++) {
-        processFinishTime[i] = processTurnaroundTime[i] + processArrivalTime[i];
-    }
-
     printf("\n\t PROCESS\t ARRIVAL TIME\t BURST TIME\t FINISH TIME\t TURNAROUND TIME\t WAITING TIME\t RESPONSE TIME\n");
     for (i = 0; i < processCount; i++) {
         printf("\t P%d \t\t %d \t\t %d \t\t %d \t\t %d \t\t\t %d\t\t %d \n",
             i + 1, processArrivalTime[i], processBackupBurstTime[i], processFinishTime[i], processTurnaroundTime[i], processWaitingTime[i], processResponseTime[i]);
     }
+
+    // Calculate statistics
+    maxTurnaroundTime = processTurnaroundTime[0];
+    float tmpTurnaroundTime = 0;
+    for (int i = 0; i < processCount; i++) {
+        tmpTurnaroundTime += processTurnaroundTime[i];
+        if (processTurnaroundTime[i] > maxTurnaroundTime) {
+            maxTurnaroundTime = processTurnaroundTime[i];
+        } 
+    }
+    averageTurnaroundTime = tmpTurnaroundTime / processCount;
+
+    maxWaitingTime = processWaitingTime[0];
+    float tmpWaitingTime = 0;
+    for (int i = 0; i < processCount; i++) {
+        tmpWaitingTime += processWaitingTime[i];
+        if (processWaitingTime[i] > maxWaitingTime) {
+            maxWaitingTime = processWaitingTime[i];
+        } 
+    }
+    averageWaitingTime = tmpWaitingTime / processCount;
+
 
     /*
         Output algorithm statistics
