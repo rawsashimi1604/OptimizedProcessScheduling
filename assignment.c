@@ -23,7 +23,7 @@ int processTurnaroundTime[MAX_PROCESS_COUNT];       // Store information on proc
 int processWaitingTime[MAX_PROCESS_COUNT];          // Store information on process waiting time.
 bool processAdded[MAX_PROCESS_COUNT];               // Store information on whether process has been added to queue.
 
-int timeQuantum = 2;                                // Time Quantum before context switching.
+int timeQuantum = 1;                                // Time Quantum before context switching.
 
 // Parameters to be optimized.
 float averageTurnaroundTime = 0;      
@@ -257,9 +257,10 @@ void defaultRoundRobin() {
     Queue* queue = createQueue();                   // Create Queue
     Process* cpu = NULL;                            // READY process to be executed
 
-    int count = 0;                                  // TMP variable to stop loop...
+    int count = 0;                                  // Count of processes completed. If all processes are completed, break the algorithm.
     int currTime = 0;                               // Keep track of current time.
-    int tmpQuantum = 1;                             // Keeping track when to switch.
+    int tmpQuantum = 0;                             // Keeping track when to switch.
+    bool switchFlag = false;                        // Keeping track of time quantum switch.
 
     printf("ALGORITHM\n---\n");
     while (true) {
@@ -295,8 +296,9 @@ void defaultRoundRobin() {
             cpu->remainingTime = cpu->remainingTime - 1;                    // Execute process
             printf("Executing process %d now\n", cpu->processNumber);
             printf("Current Status: "); printProcess(cpu);
-
-            if (!cpu->started) {
+            tmpQuantum++;                                                   // Keep track of time quantum
+            printf("tmpQuantum = %d\n", tmpQuantum);
+            if (!cpu->started) {                                            // Keep track of CPU Start Time. (Used in calculations later)
                 cpu->startTime = currTime-1;
                 cpu->started = true;
             }
@@ -314,39 +316,52 @@ void defaultRoundRobin() {
 
                 free(cpu);
                 cpu = NULL;
+                
+
+                count++;
+
+                if (count == processCount) {
+                    break;
+                }
             }
 
             // Time quantum exceeded, add back to queue. 
-            else if (tmpQuantum > timeQuantum) {
+            else if (tmpQuantum >= timeQuantum) {
                 enqueue(queue, cpu);
                 printf("Switch Process %d out.\n", cpu->processNumber);
-                tmpQuantum = 1;                                             // RESET time quantum.
+                switchFlag = true;
+                tmpQuantum = 0;
             }
         }
 
         printf("Queue AFTER EXECUTING "); show(queue);
 
-
-        // If queue is not empty, dequeue and put into CPU
-        if (!isEmpty(queue)) {
-            Process* tmp = dequeue(queue);
-            printf("Next Process: "); printProcess(tmp); 
-
-            // Add to Queue
-            cpu = tmp; printf("Process %d added to CPU\n", cpu->processNumber);   
+        // If CPU is empty, ready next process to be executed...
+        if (cpu == NULL) {
+            switchFlag = true;
+            tmpQuantum = 0;
         }
+
+        // If queue is not empty, dequeue and put into CPU.
+        if (!isEmpty(queue) && switchFlag) {
+            // If switch is triggered (quantum exceeded), or start of algorithm
+
+            // Add new process to CPU from front of Queue
+            Process* tmp = dequeue(queue);
+            cpu = tmp;
+
+
+            // Else, the current process in CPU remains
+            printf("Process %d added to CPU\n", cpu->processNumber);   
+        }
+
+        printf("Next Process: "); printProcess(cpu); 
 
         printf("count = %d, currTime = %d, timeElapsed = %d\n---\n", count, currTime, currTime+1);
         
-        
-        count++;
-        currTime++;
-        tmpQuantum++;                               // Keep track of when to switch processes.
-        
+        currTime++;             // Update time.
+        switchFlag = false;     // Reset switch flag.
 
-        if (count > 16) {
-            break;
-        }
     }
 
     printf("\n\t PROCESS\t ARRIVAL TIME\t BURST TIME\t FINISH TIME\t TURNAROUND TIME\t WAITING TIME\t RESPONSE TIME\n");
@@ -385,6 +400,7 @@ void defaultRoundRobin() {
     printf("maximum turnaround time: %.2f\n", maxTurnaroundTime);
     printf("average waiting time: %.2f\n", averageWaitingTime);
     printf("maximum waiting time: %.2f\n", maxWaitingTime);
+    printf("time quantum: %d\n", timeQuantum);
     
 }
 
