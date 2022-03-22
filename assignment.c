@@ -23,6 +23,7 @@ int processTurnaroundTime[MAX_PROCESS_COUNT];       // Store information on proc
 int processWaitingTime[MAX_PROCESS_COUNT];          // Store information on process waiting time.
 bool processAdded[MAX_PROCESS_COUNT];               // Store information on whether process has been added to queue.
 
+int totalBurstTime = 0;                             // Total burst time of processes.
 int timeQuantum = 1;                                // Time Quantum before context switching.
 
 // Parameters to be optimized.
@@ -112,7 +113,7 @@ void show(Queue* q)
         printf("Queue: ");
         printf("[");
         for (int i = q->Front; i <= q->Rear; i++)
-            printf("(P%d, %d), ", q->inp_arr[i]->processNumber, q->inp_arr[i]->remainingTime);
+            printf("(P%d, %d), ", (q->inp_arr[i]->processNumber)+1, q->inp_arr[i]->remainingTime);
         printf("]");
         printf("\n");
     }
@@ -216,13 +217,18 @@ void readInputFile(const char* filePath) {
         printf("Process %d: ArrivalTime = %d, BurstTime = %d\n", p+1, arrivalTime, burstTime);
         p++;
         processCount++;
+        totalBurstTime += burstTime;
     }
 
+    printf("\nTotal Burst Time: %d\n", totalBurstTime);
+    printf("Total no. of processes: %d\n", processCount);
     printf("\nFile reading complete...\nInformation storage arrays updated...\n\n---");
+    
+    timeQuantum = totalBurstTime / processCount;        //calculate time quantum based on average of burst time.
 
     // Close file
     fclose(fp);             
-    printf("\nFile closed.\n\n");             
+    printf("\nFile closed.\n\n");   
 }
 
 /**
@@ -287,8 +293,7 @@ void defaultRoundRobin() {
 
                 printf("Added process %d to Queue!\n", p->processNumber);
             }
-        }
-
+        }   
         printf("Queue BEFORE EXECUTING "); show(queue);
 
         // If cpu has a process, execute
@@ -316,8 +321,6 @@ void defaultRoundRobin() {
 
                 free(cpu);
                 cpu = NULL;
-                
-
                 count++;
 
                 if (count == processCount) {
@@ -361,14 +364,14 @@ void defaultRoundRobin() {
         
         currTime++;             // Update time.
         switchFlag = false;     // Reset switch flag.
-
     }
 
     printf("\n\t PROCESS\t ARRIVAL TIME\t BURST TIME\t FINISH TIME\t TURNAROUND TIME\t WAITING TIME\t RESPONSE TIME\n");
     for (i = 0; i < processCount; i++) {
         printf("\t P%d \t\t %d \t\t %d \t\t %d \t\t %d \t\t\t %d\t\t %d \n",
-            i + 1, processArrivalTime[i], processBackupBurstTime[i], processFinishTime[i], processTurnaroundTime[i], processWaitingTime[i], processResponseTime[i]);
+            i, processArrivalTime[i], processBackupBurstTime[i], processFinishTime[i], processTurnaroundTime[i], processWaitingTime[i], processResponseTime[i]);
     }
+    
 
     // Calculate statistics
     maxTurnaroundTime = processTurnaroundTime[0];
@@ -401,7 +404,6 @@ void defaultRoundRobin() {
     printf("average waiting time: %.2f\n", averageWaitingTime);
     printf("maximum waiting time: %.2f\n", maxWaitingTime);
     printf("time quantum: %d\n", timeQuantum);
-    
 }
 
 int main ()
