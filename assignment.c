@@ -1,3 +1,7 @@
+/**
+  * Time quantum is average of total burst time.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
