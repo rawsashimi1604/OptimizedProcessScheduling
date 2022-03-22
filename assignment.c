@@ -1,3 +1,6 @@
+/**
+  * Dynamic time quantum. Based on total burst time in queue and no. of process in queue.
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
