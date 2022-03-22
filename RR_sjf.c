@@ -1,5 +1,7 @@
 /**
-  * Dynamic time quantum. Based on total burst time in queue and no. of process in queue.
+  * SJF and RR. Queue sort in ascending order.
+  * 1st Time quantum is burst time of shortest job in queue. 
+  * Subsequent time quantum will double.
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -118,22 +120,40 @@ int show(Queue* q)
         printf("Queue: ");
         printf("[");
         int remainingTimeCount = 0;
+        int temp = 0;
+        int proNoTemp = 0;
         for (int i = q->Front; i <= q->Rear; i++) {
-            printf("(P%d, %d), ", (q->inp_arr[i]->processNumber)+1, q->inp_arr[i]->remainingTime);
-            remainingTimeCount += q->inp_arr[i]->remainingTime;
+            for (int j = i+1; j <= q->Rear; j++) {
+                if (((q->inp_arr[i]->remainingTime) > (q->inp_arr[j]->remainingTime)) && (q->inp_arr[j]->processNumber != 0)) {
+                    temp = (q->inp_arr[i]->remainingTime);
+                    q->inp_arr[i]->remainingTime = q->inp_arr[j]->remainingTime;
+                    q->inp_arr[j]->remainingTime = temp;
+
+                    proNoTemp = (q->inp_arr[i]->processNumber);
+                    (q->inp_arr[i]->processNumber) = (q->inp_arr[j]->processNumber);
+                    (q->inp_arr[j]->processNumber) = proNoTemp;
+
+                }
+            }
+    
+        printf("(P%d, %d), ", (q->inp_arr[i]->processNumber), q->inp_arr[i]->remainingTime);
+        timeQuantum = q->inp_arr[i]->remainingTime;
+        remainingTimeCount += q->inp_arr[i]->remainingTime;
         }
+
         printf("]");
         printf("\n");
         int qitemCount = q->Rear - q->Front + 1;
 
         printf("No. of processes in queue: %d\n", qitemCount);
 
-        if (qitemCount > 0) {
-            timeQuantum = (int) (remainingTimeCount / qitemCount);
-            printf("Current Time Quantum: %d\n", timeQuantum);
-        }
-        else
-            timeQuantum = remainingTimeCount;
+
+        // if (qitemCount > 0) {
+        //     timeQuantum = (int) (remainingTimeCount / qitemCount);
+        //     printf("Current Time Quantum: %d\n", timeQuantum);
+        // }
+        // else
+        //     timeQuantum = remainingTimeCount;
     }
 } 
 
@@ -232,7 +252,7 @@ void readInputFile(const char* filePath) {
         processBurstTime[p] = burstTime;
         processBackupBurstTime[p] = burstTime;
 
-        printf("Process %d: ArrivalTime = %d, BurstTime = %d\n", p+1, arrivalTime, burstTime);
+        printf("Process %d: ArrivalTime = %d, BurstTime = %d\n", p, arrivalTime, burstTime);
         p++;
         processCount++;
     }
@@ -304,7 +324,7 @@ void defaultRoundRobin() {
 
                 processAdded[i] = true;
 
-                printf("Added process %d to Queue!\n", (p->processNumber)+1);
+                printf("Added process %d to Queue!\n", (p->processNumber));
             }
         }
 
@@ -383,8 +403,11 @@ void defaultRoundRobin() {
 
     printf("\n\t PROCESS\t ARRIVAL TIME\t BURST TIME\t FINISH TIME\t TURNAROUND TIME\t WAITING TIME\t RESPONSE TIME\n");
     for (i = 0; i < processCount; i++) {
+        processTurnaroundTime[i] = processFinishTime[i] - processArrivalTime[i];
+        processWaitingTime[i] = processTurnaroundTime[i] - processBackupBurstTime[i];
+        //processResponseTime[i] =   processArrivalTime[i];
         printf("\t P%d \t\t %d \t\t %d \t\t %d \t\t %d \t\t\t %d\t\t %d \n",
-            i+1, processArrivalTime[i], processBackupBurstTime[i], processFinishTime[i], processTurnaroundTime[i], processWaitingTime[i], processResponseTime[i]);
+            i, processArrivalTime[i], processBackupBurstTime[i], processFinishTime[i], processTurnaroundTime[i], processWaitingTime[i], processResponseTime[i]);
     }
 
     // Calculate statistics
