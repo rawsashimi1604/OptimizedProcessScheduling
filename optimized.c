@@ -46,6 +46,7 @@ Process* peek(Queue* q);
 Process* dequeue(Queue* q);
 void sortQueue(Queue* q);
 void show();
+int calculateDynamicTQ(Queue* q);
 
 
 // ---------------------------------------
@@ -64,7 +65,7 @@ int processTurnaroundTime[MAX_PROCESS_COUNT];       // Store information on proc
 int processWaitingTime[MAX_PROCESS_COUNT];          // Store information on process waiting time.
 bool processAdded[MAX_PROCESS_COUNT];               // Store information on whether process has been added to queue.
 
-int timeQuantum = 1;                                // Time Quantum before context switching.
+int timeQuantum = 20;                                // Time Quantum before context switching.
 
 // Parameters to be optimized.
 float averageTurnaroundTime = 0;      
@@ -206,7 +207,36 @@ void sortQueue(Queue* q) {
         enqueue(q, tmp[i]);
     }
 
-    show(q);
+    printf("Sorted queue!\n"); show(q);
+}
+
+/**
+  * Calculates Time Quantum value based on average remaining time amoung Processes in Queue.
+*/
+int calculateDynamicTQ(Queue* q) {
+    int sum = 0;
+
+    Process* tmp[MAX_PROCESS_COUNT];
+
+    int n = 0;                          // Number of elements in Queue
+    int size = q->size;
+
+    // Deqeueue all elements to a temporary array.
+    while(!isEmpty(q)) {
+        tmp[n] = dequeue(q);
+        n++;
+    }
+
+    for (int i = 0; i < size; i++) {
+        sum += tmp[i]->remainingTime;
+    }
+
+    // Add back to queue
+    for (int i = 0; i < size; i++) {
+        enqueue(q, tmp[i]);
+    }
+
+    return sum / q->size;
 }
 
 // ---------------------------------------
@@ -308,9 +338,9 @@ void readInputFile(const char* filePath) {
 }
 
 /**
-  * Executes the default round robin algorithm.   
+  * Executes the optimized round robin algorithm.   
 */
-void defaultRoundRobin() {
+void optimizedRoundRobin() {
     /*
         Read input file into information storage arrays.
     */
@@ -343,6 +373,10 @@ void defaultRoundRobin() {
     int currTime = 0;                               // Keep track of current time.
     int tmpQuantum = 0;                             // Keeping track when to switch.
     bool switchFlag = false;                        // Keeping track of time quantum switch.
+
+    int cycleCount = 0;                             // Current process cycle count.
+    int cycleSize = 0;                              // Current process cycle size.
+    bool algoCycleFlag = true;                      // Keeping track of algorithm cycling, only update time quantum when cycle has completed.
 
     // round robin algo 
     // with dynamic time quantum that changes based on the avg burst time of process in the ready queue
@@ -381,6 +415,7 @@ void defaultRoundRobin() {
 
         // If cpu has a process, execute
         if (cpu) {
+            
             cpu->remainingTime = cpu->remainingTime - 1;                    // Execute process
             printf("Executing process %d now\n", cpu->processNumber);
             printf("Current Status: "); printProcess(cpu);
@@ -392,7 +427,10 @@ void defaultRoundRobin() {
             }
 
             // Process has finished executing
-            if (cpu->remainingTime <= 0) {
+            if (cpu->remainingTime <= 0) {  
+
+                cycleCount++;                                               // Update cycle count. (tracking when to recalculate DTQ)
+
                 cpu->finishTime = currTime;
                 printf("P%d has finished executing at time %d!!!!\n", cpu->processNumber, cpu->finishTime);
 
@@ -404,8 +442,7 @@ void defaultRoundRobin() {
 
                 free(cpu);
                 cpu = NULL;
-                
-
+            
                 count++;
 
                 if (count == processCount) {
@@ -415,6 +452,7 @@ void defaultRoundRobin() {
 
             // Time quantum exceeded, add back to queue. 
             else if (tmpQuantum >= timeQuantum) {
+                cycleCount++;                                               // Update cycle count. (tracking when to recalculate DTQ)
                 enqueue(queue, cpu);
                 printf("Switch Process %d out.\n", cpu->processNumber);
                 switchFlag = true;
@@ -430,17 +468,34 @@ void defaultRoundRobin() {
             tmpQuantum = 0;
         }
 
+        // Track when the round robin cycle has completed.
+        if (cycleCount == cycleSize) {
+            algoCycleFlag = true;
+        }
+
         // If queue is not empty, dequeue and put into CPU.
         if (!isEmpty(queue) && switchFlag) {
-            // If switch is triggered (quantum exceeded), or start of algorithm
+
+            // If new cycle has begun, calculate dynamic timeQuantum
+            if (algoCycleFlag) {
+                timeQuantum = calculateDynamicTQ(queue);
+                cycleCount = 0;                             // Reset cycle count.
+                cycleSize = queue->size;                    // Reset cycle size.
+                algoCycleFlag = false;
+
+                sortQueue(queue); 
+
+                printf("Updated TIME QUANTUM to %d!\n", timeQuantum);
+            }
 
             // Add new process to CPU from front of Queue
             Process* tmp = dequeue(queue);
             cpu = tmp;
 
-
             // Else, the current process in CPU remains
             printf("Process %d added to CPU\n", cpu->processNumber);   
+
+            
         }
 
         printf("Next Process: "); printProcess(cpu); 
@@ -449,6 +504,8 @@ void defaultRoundRobin() {
         
         currTime++;             // Update time.
         switchFlag = false;     // Reset switch flag.
+
+        
 
     }
 
@@ -462,7 +519,7 @@ void defaultRoundRobin() {
     printf("\n\t PROCESS\t ARRIVAL TIME\t BURST TIME\t FINISH TIME\t TURNAROUND TIME\t WAITING TIME\t RESPONSE TIME\n");
     for (i = 0; i < processCount; i++) {
         printf("\t P%d \t\t %d \t\t %d \t\t %d \t\t %d \t\t\t %d\t\t %d \n",
-            i + 1, processArrivalTime[i], processBackupBurstTime[i], processFinishTime[i], processTurnaroundTime[i], processWaitingTime[i], processResponseTime[i]);
+            i, processArrivalTime[i], processBackupBurstTime[i], processFinishTime[i], processTurnaroundTime[i], processWaitingTime[i], processResponseTime[i]);
     }
 
     // Calculate statistics
@@ -498,34 +555,6 @@ void defaultRoundRobin() {
 
 int main ()
 {
-    // defaultRoundRobin();
-
-    Queue* q = createQueue();
-
-    Process* p1 = malloc(sizeof(Process));
-    p1->processNumber = 1;
-    p1->remainingTime = 5;
-
-    Process* p2 = malloc(sizeof(Process));
-    p2->processNumber = 2;
-    p2->remainingTime = 2;
-
-    Process* p3 = malloc(sizeof(Process));
-    p3->processNumber = 3;
-    p3->remainingTime = 1;
-
-    enqueue(q, p1);
-    enqueue(q, p2);
-    enqueue(q, p3);
-
-    show(q);
-
-    sortQueue(q);
-
-    free(q);
-    free(p1);
-    free(p2);
-    free(p3);
-
+    optimizedRoundRobin();
     return 0;
 } 
