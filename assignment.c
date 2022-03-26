@@ -10,6 +10,23 @@
 #define MAX_PROCESS_COUNT 99                        // Maximum number of processes to schedule for algorithm
 #define BUFFER_LEN 255                              // Size of buffer to read line from file
                          
+// ---------------------------------------
+//  Function Declarations
+// ---------------------------------------
+
+// Process Functions
+void printProcess(Process* p);
+
+// Queue Functions
+Queue* createQueue();
+void enqueue(Queue* q, Process* p);
+Process* peek(Queue* q);
+Process* dequeue(Queue* q);
+void show();
+
+// ---------------------------------------
+//  Global Variables
+// ---------------------------------------
 
 int processCount = 0;                               // Number of processes read. 
 
@@ -31,7 +48,9 @@ float maxTurnaroundTime = 0;
 float averageWaitingTime = 0;
 float maxWaitingTime = 0;
 
-// Process Data Structure
+// ---------------------------------------
+//  Process Data Structure
+// ---------------------------------------
 typedef struct {
     int processNumber;
     int remainingTime;
@@ -43,13 +62,15 @@ typedef struct {
     int finishTime;
 } Process;
 
-void printProcess(Process* p);
+
 
 void printProcess(Process* p) {
     printf("(P%d, %d)\n", p->processNumber, p->remainingTime);
 }
 
-// Queue Data Structure
+// ---------------------------------------
+//  Queue Data Structure
+// ---------------------------------------
 typedef struct {
     Process* inp_arr[MAX_PROCESS_COUNT];
     int Rear; 
@@ -57,12 +78,10 @@ typedef struct {
     int size;
 } Queue;
 
-Queue* createQueue();
-void enqueue(Queue* q, Process* p);
-Process* peek(Queue* q);
-Process* dequeue(Queue* q);
-void show();
-
+/**
+  * Dynamically allocates memory for a Queue.
+  * Returns pointer to the dynamically allocated Queue.
+*/
 Queue* createQueue() {
     Queue* q = malloc(sizeof(Queue));
     q->Front = -1;
@@ -71,6 +90,9 @@ Queue* createQueue() {
     return q;
 }
 
+/**
+  * Adds a Process to a Queue.
+*/
 void enqueue(Queue* q, Process* p)
 {
     Process* insert_item = p;
@@ -86,7 +108,11 @@ void enqueue(Queue* q, Process* p)
         q->size = q->size + 1;
     }
 } 
-  
+
+/**
+  * Removes a Process from a Queue. 
+  * Returns pointer to the Process removed.
+*/
 Process* dequeue(Queue* q)
 {
     if (q->Front == - 1 || q->Front > q->Rear)
@@ -103,6 +129,9 @@ Process* dequeue(Queue* q)
     }
 } 
 
+/**
+  * Displays all Processes (Process Number, Remaining Time) in the Queue.
+*/
 void show(Queue* q)
 {
     if (q->Front == - 1)
@@ -118,10 +147,16 @@ void show(Queue* q)
     }
 } 
 
+/**
+  * Returns true if Queue has 1 or more Processes in it. False otherwise.
+*/
 int isEmpty(Queue* q) {
     return q->size == 0;
 }
 
+/**
+  * Returns the pointer to the Process at the front of the Queue.
+*/
 Process* peek(Queue* q){
     if (isEmpty(q)) {
         return NULL;
@@ -364,6 +399,13 @@ void defaultRoundRobin() {
 
     }
 
+    free(queue);                // Free memory dynamically allocated to Queue.
+
+    /*
+        Output algorithm statistics
+    */
+
+    // Print statistics heaaders.
     printf("\n\t PROCESS\t ARRIVAL TIME\t BURST TIME\t FINISH TIME\t TURNAROUND TIME\t WAITING TIME\t RESPONSE TIME\n");
     for (i = 0; i < processCount; i++) {
         printf("\t P%d \t\t %d \t\t %d \t\t %d \t\t %d \t\t\t %d\t\t %d \n",
@@ -391,10 +433,7 @@ void defaultRoundRobin() {
     }
     averageWaitingTime = tmpWaitingTime / processCount;
 
-
-    /*
-        Output algorithm statistics
-    */
+    
     printf("---\nPrinting algorithm statistics...\n\n");
     printf("average turnaround time: %.2f\n", averageTurnaroundTime);
     printf("maximum turnaround time: %.2f\n", maxTurnaroundTime);
