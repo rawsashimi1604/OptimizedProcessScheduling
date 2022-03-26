@@ -9,7 +9,29 @@
 
 #define MAX_PROCESS_COUNT 99                        // Maximum number of processes to schedule for algorithm
 #define BUFFER_LEN 255                              // Size of buffer to read line from file
-                         
+
+// ---------------------------------------
+//  Struct Declarations
+// ---------------------------------------
+
+typedef struct {
+    int processNumber;
+    int remainingTime;
+    bool started;
+
+    int arrivalTime;
+    int startTime;
+    int burstTime;
+    int finishTime;
+} Process;
+
+typedef struct {
+    Process* inp_arr[MAX_PROCESS_COUNT];
+    int Rear; 
+    int Front;
+    int size;
+} Queue;
+
 // ---------------------------------------
 //  Function Declarations
 // ---------------------------------------
@@ -49,34 +71,16 @@ float averageWaitingTime = 0;
 float maxWaitingTime = 0;
 
 // ---------------------------------------
-//  Process Data Structure
+//  Process Functions
 // ---------------------------------------
-typedef struct {
-    int processNumber;
-    int remainingTime;
-    bool started;
-
-    int arrivalTime;
-    int startTime;
-    int burstTime;
-    int finishTime;
-} Process;
-
-
 
 void printProcess(Process* p) {
     printf("(P%d, %d)\n", p->processNumber, p->remainingTime);
 }
 
 // ---------------------------------------
-//  Queue Data Structure
+//  Queue Functions
 // ---------------------------------------
-typedef struct {
-    Process* inp_arr[MAX_PROCESS_COUNT];
-    int Rear; 
-    int Front;
-    int size;
-} Queue;
 
 /**
   * Dynamically allocates memory for a Queue.
