@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 /*
-    OPTIMIZED ROUND ROBIN ALGORITHM
+    STANDARD ROUND ROBIN ALGORITHM
 */
 
 #define MAX_PROCESS_COUNT 99                        // Maximum number of processes to schedule for algorithm
