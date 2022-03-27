@@ -394,7 +394,11 @@ void defaultRoundRobin() {
             printf("Process %d added to CPU\n", cpu->processNumber);   
         }
 
-        printf("Next Process: "); printProcess(cpu); 
+        if (cpu) {
+            printf("Next Process: "); printProcess(cpu); 
+        } else {
+            printf("Next Process: NULL"); 
+        }
 
         printf("count = %d, currTime = %d, timeElapsed = %d\n---\n", count, currTime, currTime+1);
         

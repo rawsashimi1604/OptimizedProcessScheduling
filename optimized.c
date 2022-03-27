@@ -498,7 +498,12 @@ void optimizedRoundRobin() {
             
         }
 
-        printf("Next Process: "); printProcess(cpu); 
+        if (cpu) {
+            printf("Next Process: "); printProcess(cpu); 
+        } else {
+            printf("Next Process: NULL"); 
+        }
+        
 
         printf("count = %d, currTime = %d, timeElapsed = %d\n---\n", count, currTime, currTime+1);
         
