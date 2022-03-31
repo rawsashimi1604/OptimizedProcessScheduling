@@ -65,7 +65,7 @@ int processTurnaroundTime[MAX_PROCESS_COUNT];       // Store information on proc
 int processWaitingTime[MAX_PROCESS_COUNT];          // Store information on process waiting time.
 bool processAdded[MAX_PROCESS_COUNT];               // Store information on whether process has been added to queue.
 
-int timeQuantum = 20;                                // Time Quantum before context switching.
+int timeQuantum = 1;                                // Time Quantum before context switching.
 
 // Parameters to be optimized.
 float averageTurnaroundTime = 0;      
@@ -556,6 +556,11 @@ void optimizedRoundRobin() {
     printf("maximum waiting time: %.2f\n", maxWaitingTime);
     printf("time quantum: %d\n", timeQuantum);
     
+    // output to txt file
+    FILE *fptr;
+    fptr = fopen("optimized_output.txt" , "a");
+    fprintf(fptr,"%.2f %.2f %.2f %.2f\n", averageTurnaroundTime, maxTurnaroundTime, averageWaitingTime, maxWaitingTime);
+    fclose(fptr);
 }
 
 int main ()
