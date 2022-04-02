@@ -325,6 +325,12 @@ void readInputFile(const char* filePath) {
         processBurstTime[p] = burstTime;
         processBackupBurstTime[p] = burstTime;
 
+        // error handling for negative inputs
+        if (processArrivalTime[p] < 0 || processBurstTime[p] < 0) {
+            printf("\nInvalid input at line %d!\n\n", p+1);
+            exit(EXIT_FAILURE);
+        }
+
         printf("Process %d: ArrivalTime = %d, BurstTime = %d\n", p+1, arrivalTime, burstTime);
         p++;
         processCount++;
