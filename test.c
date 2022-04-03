@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 /*
-    OPTIMIZED ROUND ROBIN ALGORITHM
+    STANDARD ROUND ROBIN ALGORITHM
 */
 
 #define MAX_PROCESS_COUNT 99                        // Maximum number of processes to schedule for algorithm
@@ -44,10 +44,7 @@ Queue* createQueue();
 void enqueue(Queue* q, Process* p);
 Process* peek(Queue* q);
 Process* dequeue(Queue* q);
-void sortQueue(Queue* q);
-void show(Queue* q);
-int calculateDynamicTQ(Queue* q);
-
+void show();
 
 // ---------------------------------------
 //  Global Variables
@@ -65,7 +62,7 @@ int processTurnaroundTime[MAX_PROCESS_COUNT];       // Store information on proc
 int processWaitingTime[MAX_PROCESS_COUNT];          // Store information on process waiting time.
 bool processAdded[MAX_PROCESS_COUNT];               // Store information on whether process has been added to queue.
 
-int timeQuantum = 1;                                // Time Quantum before context switching.
+int timeQuantum = 20;                                // Time Quantum before context switching.
 
 // Parameters to be optimized.
 float averageTurnaroundTime = 0;      
@@ -174,74 +171,6 @@ Process* peek(Queue* q){
 }
 
 /**
-  * Sorts the Queue, placing the process with the least remaining time at the start of the Queue.
-*/
-void sortQueue(Queue* q) {
-
-    Process* tmp[MAX_PROCESS_COUNT];    // Temporary array to store Processes
-
-    int n = 0;                          // Number of elements in Queue
-    int size = q->size;
-
-    // Deqeueue all elements to a temporary array.
-    while(!isEmpty(q)) {
-        tmp[n] = dequeue(q);
-        n++;
-    }
-    
-    // Insertion sort, by remaining time.
-    for (int i = 1; i < size; i++) {
-        Process* currProcess = tmp[i];
-        int pos = i;
-
-        while (pos > 0 && tmp[pos-1]->remainingTime > currProcess->remainingTime) {
-            tmp[pos] = tmp[pos-1];
-            pos = pos-1;
-        }
-
-        tmp[pos] = currProcess;
-    }
-
-    // Add back to queue
-    for (int i = 0; i < size; i++) {
-        enqueue(q, tmp[i]);
-    }
-}
-
-/**
-  * Calculates Time Quantum value based on average remaining time amoung Processes in Queue.
-*/
-int calculateDynamicTQ(Queue* q) {
-    int sum = 0;
-
-    Process* tmp[MAX_PROCESS_COUNT];
-
-    int n = 0;                          // Number of elements in Queue
-    int size = q->size;
-
-    // Deqeueue all elements to a temporary array.
-    while(!isEmpty(q)) {
-        tmp[n] = dequeue(q);
-        n++;
-    }
-
-    for (int i = 0; i < size; i++) {
-        sum += tmp[i]->remainingTime;
-    }
-
-    // Add back to queue
-    for (int i = 0; i < size; i++) {
-        enqueue(q, tmp[i]);
-    }
-
-    return sum / q->size;
-}
-
-// ---------------------------------------
-//  Ohter Functions
-// ---------------------------------------
-
-/**
   * Get index of first occurence of char c in string. 
   * Returns index if found, -1 if not found.
 */
@@ -303,7 +232,7 @@ void readInputFile(const char* filePath) {
         exit(EXIT_FAILURE);
     }
 
-    printf("\nReading <%s> now.\n\n", filePath);
+    printf("\nReading <%s> now.\n\n---\n\n", filePath);
 
     char buffer[BUFFER_LEN];                        // Buffer to store contents read from file.
 
@@ -323,18 +252,18 @@ void readInputFile(const char* filePath) {
         processBurstTime[p] = burstTime;
         processBackupBurstTime[p] = burstTime;
 
-        // error handling for negative inputs, burst time 0
-        if (processArrivalTime[p] < 0 || processBurstTime[p] <= 0) {
+        // error handling for negative inputs
+        if (processArrivalTime[p] < 0 || processBurstTime[p] < 0) {
             printf("\nInvalid input at line %d!\n\n", p+1);
             exit(EXIT_FAILURE);
         }
 
-        printf("Process %d: ArrivalTime = %d, BurstTime = %d\n", p, arrivalTime, burstTime);
+        printf("Process %d: ArrivalTime = %d, BurstTime = %d\n", p+1, arrivalTime, burstTime);
         p++;
         processCount++;
     }
 
-    printf("\nFile reading complete...\nInformation storage arrays updated...\n");
+    printf("\nFile reading complete...\nInformation storage arrays updated...\n\n---");
 
     // Close file
     fclose(fp);             
@@ -342,21 +271,13 @@ void readInputFile(const char* filePath) {
 }
 
 /**
-  * Executes the optimized round robin algorithm.   
+  * Executes the default round robin algorithm.   
 */
-void optimizedRoundRobin() {
-
-    // Get the input file from command prompt
-    char fileName[256];
-    printf("Enter your input file name: ");
-    fgets(fileName, sizeof(fileName), stdin);       
-    fileName[strlen(fileName) - 1] = 0;             // Strip \n character at the end of string.
-
-
+void defaultRoundRobin() {
     /*
         Read input file into information storage arrays.
     */
-    readInputFile(fileName);                    
+    readInputFile("input.txt");                    
 
     /*
         PERFORM ALGORITHM.
@@ -364,6 +285,17 @@ void optimizedRoundRobin() {
     // Set all processAdded elements to false
     for (int i = 0; i < processCount; i++) {
         processAdded[i] = false;
+    }
+
+
+    // Get maximum process burst time.
+    int maxBurstTime = processBurstTime[0];         
+    int i;
+
+    for (i = 1; i < processCount; i++){ 
+        if (maxBurstTime < processBurstTime[i]) {
+            maxBurstTime = processBurstTime[i];
+        }
     }
 
     // simulation of round robin process
@@ -375,12 +307,14 @@ void optimizedRoundRobin() {
     int tmpQuantum = 0;                             // Keeping track when to switch.
     bool switchFlag = false;                        // Keeping track of time quantum switch.
 
-    int cycleCount = 0;                             // Current process cycle count.
-    int cycleSize = 0;                              // Current process cycle size.
-    bool algoCycleFlag = true;                      // Keeping track of algorithm cycling, only update time quantum when cycle has completed.
-
-    printf("---------------------------\n|     ALGORITHM: RRS      |\n---------------------------\n");
-    while (true) {        
+    printf("ALGORITHM\n---\n");
+    while (true) {
+        if (cpu) {
+            printf("CPU "); printProcess(cpu);
+        } else {
+            printf("CPU: NULL\n");
+        }
+        
         // Add processes to Queue
         for (int i = 0; i < processCount; i++) {
             // If process arrives, add to queue. If already added, do not add again...
@@ -395,24 +329,27 @@ void optimizedRoundRobin() {
                 enqueue(queue, p);
 
                 processAdded[i] = true;
+
+                printf("Added process %d to Queue!\n", p->processNumber);
             }
         }
 
+        printf("Queue BEFORE EXECUTING "); show(queue);
+
         // If cpu has a process, execute
         if (cpu) {
-            
             cpu->remainingTime = cpu->remainingTime - 1;                    // Execute process
+            printf("Executing process %d now\n", cpu->processNumber);
+            printf("Current Status: "); printProcess(cpu);
             tmpQuantum++;                                                   // Keep track of time quantum
+            printf("tmpQuantum = %d\n", tmpQuantum);
             if (!cpu->started) {                                            // Keep track of CPU Start Time. (Used in calculations later)
                 cpu->startTime = currTime-1;
                 cpu->started = true;
             }
 
             // Process has finished executing
-            if (cpu->remainingTime <= 0) {  
-
-                cycleCount++;                                               // Update cycle count. (tracking when to recalculate DTQ)
-
+            if (cpu->remainingTime <= 0) {
                 cpu->finishTime = currTime;
                 printf("P%d has finished executing at time %d!!!!\n", cpu->processNumber, cpu->finishTime);
 
@@ -424,7 +361,8 @@ void optimizedRoundRobin() {
 
                 free(cpu);
                 cpu = NULL;
-            
+                
+
                 count++;
 
                 if (count == processCount) {
@@ -434,12 +372,14 @@ void optimizedRoundRobin() {
 
             // Time quantum exceeded, add back to queue. 
             else if (tmpQuantum >= timeQuantum) {
-                cycleCount++;                                               // Update cycle count. (tracking when to recalculate DTQ)
                 enqueue(queue, cpu);
+                printf("Switch Process %d out.\n", cpu->processNumber);
                 switchFlag = true;
                 tmpQuantum = 0;
             }
         }
+
+        printf("Queue AFTER EXECUTING "); show(queue);
 
         // If CPU is empty, ready next process to be executed...
         if (cpu == NULL) {
@@ -447,33 +387,30 @@ void optimizedRoundRobin() {
             tmpQuantum = 0;
         }
 
-        // Track when the round robin cycle has completed.
-        if (cycleCount == cycleSize) {
-            algoCycleFlag = true;
-        }
-
         // If queue is not empty, dequeue and put into CPU.
         if (!isEmpty(queue) && switchFlag) {
-
-            // If new cycle has begun, calculate dynamic timeQuantum
-            if (algoCycleFlag) {
-                timeQuantum = calculateDynamicTQ(queue);
-                cycleCount = 0;                             // Reset cycle count.
-                cycleSize = queue->size;                    // Reset cycle size.
-                algoCycleFlag = false;
-
-                sortQueue(queue); 
-            }
+            // If switch is triggered (quantum exceeded), or start of algorithm
 
             // Add new process to CPU from front of Queue
             Process* tmp = dequeue(queue);
             cpu = tmp;
 
+
             // Else, the current process in CPU remains
+            printf("Process %d added to CPU\n", cpu->processNumber);   
         }
-   
+
+        if (cpu) {
+            printf("Next Process: "); printProcess(cpu); 
+        } else {
+            printf("Next Process: NULL"); 
+        }
+
+        printf("count = %d, currTime = %d, timeElapsed = %d\n---\n", count, currTime, currTime+1);
+        
         currTime++;             // Update time.
         switchFlag = false;     // Reset switch flag.
+
     }
 
     free(queue);                // Free memory dynamically allocated to Queue.
@@ -484,9 +421,9 @@ void optimizedRoundRobin() {
 
     // Print statistics heaaders.
     printf("\n\t PROCESS\t ARRIVAL TIME\t BURST TIME\t FINISH TIME\t TURNAROUND TIME\t WAITING TIME\t RESPONSE TIME\n");
-    for (int i = 0; i < processCount; i++) {
+    for (i = 0; i < processCount; i++) {
         printf("\t P%d \t\t %d \t\t %d \t\t %d \t\t %d \t\t\t %d\t\t %d \n",
-            i, processArrivalTime[i], processBackupBurstTime[i], processFinishTime[i], processTurnaroundTime[i], processWaitingTime[i], processResponseTime[i]);
+            i + 1, processArrivalTime[i], processBackupBurstTime[i], processFinishTime[i], processTurnaroundTime[i], processWaitingTime[i], processResponseTime[i]);
     }
 
     // Calculate statistics
@@ -511,16 +448,22 @@ void optimizedRoundRobin() {
     averageWaitingTime = tmpWaitingTime / processCount;
 
     
-    printf("\nPrinting algorithm statistics...\n\n");
-    printf("---------------------------\n|     STATISTICS: RRS     |\n---------------------------\n");
+    printf("---\nPrinting algorithm statistics...\n\n");
     printf("average turnaround time: %.2f\n", averageTurnaroundTime);
     printf("maximum turnaround time: %.2f\n", maxTurnaroundTime);
     printf("average waiting time: %.2f\n", averageWaitingTime);
     printf("maximum waiting time: %.2f\n", maxWaitingTime);
+    printf("time quantum: %d\n", timeQuantum);
+
+    // Output to txt file.
+    FILE *fptr;
+    fptr = fopen("RR_output.txt" , "a");
+    fprintf(fptr,"%.2f %.2f %.2f %.2f\n", averageTurnaroundTime, maxTurnaroundTime, averageWaitingTime, maxWaitingTime);
+    fclose(fptr);
 }
 
 int main ()
 {
-    optimizedRoundRobin();
+    defaultRoundRobin();
     return 0;
 } 
